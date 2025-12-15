@@ -1,0 +1,93 @@
+﻿@page "/products"
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using MyMedia.GestaoLoja.Entities
+@using MyMedia.GestaoLoja.Data
+@implements IAsyncDisposable
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+
+<PageTitle>Produtos</PageTitle>
+
+<h1>Gestão de Produtos</h1>
+
+<p>
+    <a href="products/create" class="btn btn-primary">Criar Novo Produto</a>
+</p>
+
+<QuickGrid Class="table table-striped" Items="@productsQuery">
+
+    <TemplateColumn Title="Imagem">
+        @if (context.Image != null && context.Image.Length > 0)
+        {
+            <img src="@($"data:{context.ImageMimeType};base64,{Convert.ToBase64String(context.Image)}")"
+                 alt="Img"
+                 style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px;" />
+        }
+        else
+        {
+            <span class="text-muted small">S/ Img</span>
+        }
+    </TemplateColumn>
+
+    <PropertyColumn Property="@(p => p.Name)" Title="Nome" Sortable="true" />
+    <PropertyColumn Property="@(p => p.Price)" Title="Preço" Format="C" Sortable="true" />
+    <PropertyColumn Property="@(p => p.Stock)" Title="Stock" Sortable="true" />
+
+    <TemplateColumn Title="Categoria">
+        @if (context.Category != null)
+        {
+            @context.Category.Name
+        }
+        else
+        {
+            <span>-</span>
+        }
+    </TemplateColumn>
+
+    <TemplateColumn Title="Modo">
+        @if (context.AvailabilityMode != null)
+        {
+            @context.AvailabilityMode.Name
+        }
+        else
+        {
+            <span>-</span>
+        }
+    </TemplateColumn>
+
+    <TemplateColumn Title="Estado">
+        @if (context.IsActive)
+        {
+            <span class="badge bg-success">Ativo</span>
+        }
+        else
+        {
+            <span class="badge bg-secondary">Inativo</span>
+        }
+    </TemplateColumn>
+
+    <TemplateColumn Title="Ações">
+        <div class="d-flex gap-2">
+            <a href="@($"products/edit?id={context.Id}")" class="btn btn-sm btn-outline-primary">Editar</a>
+            <a href="@($"products/details?id={context.Id}")" class="btn btn-sm btn-outline-info">Detalhes</a>
+            <a href="@($"products/delete?id={context.Id}")" class="btn btn-sm btn-outline-danger">Apagar</a>
+        </div>
+    </TemplateColumn>
+</QuickGrid>
+
+@code {
+    private ApplicationDbContext context = default!;
+    private IQueryable<Product> productsQuery = default!;
+
+    protected override void OnInitialized()
+    {
+        context = DbFactory.CreateDbContext();
+
+        // Carregamos os dados com Includes para preencher as tabelas relacionadas
+        productsQuery = context.Products
+            .Include(p => p.Category)
+            .Include(p => p.AvailabilityMode);
+    }
+
+    public async ValueTask DisposeAsync() => await context.DisposeAsync();
+}

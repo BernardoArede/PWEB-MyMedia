@@ -1,0 +1,119 @@
+﻿@page "/products/details"
+@using Microsoft.EntityFrameworkCore
+@using MyMedia.GestaoLoja.Entities
+@using MyMedia.GestaoLoja.Data
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager Navigation
+
+<PageTitle>Detalhes do Produto</PageTitle>
+
+<h1>Detalhes do Produto</h1>
+
+<div>
+    <h4>Ficha Técnica</h4>
+    <hr />
+    @if (product is null)
+    {
+        <p><em>A carregar...</em></p>
+    }
+    else
+    {
+        <div class="row">
+            <div class="col-md-4">
+                @if (product.Image != null && product.Image.Length > 0)
+                {
+                    <img src="@($"data:{product.ImageMimeType};base64,{Convert.ToBase64String(product.Image)}")"
+                         class="img-fluid rounded shadow-sm"
+                         style="max-height: 400px; object-fit: cover;" alt="Imagem do Produto" />
+                }
+                else
+                {
+                    <div class="alert alert-secondary text-center d-flex align-items-center justify-content-center" style="height: 300px;">
+                        <span class="text-muted">Sem Imagem Disponível</span>
+                    </div>
+                }
+            </div>
+
+            <div class="col-md-8">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-4">Nome</dt>
+                            <dd class="col-sm-8 fs-5 fw-bold">@product.Name</dd>
+
+                            <dt class="col-sm-4">Descrição</dt>
+                            <dd class="col-sm-8">@product.Description</dd>
+
+                            <div class="col-12"><hr /></div>
+
+                            <dt class="col-sm-4 text-muted">Preço de Custo (Est.)</dt>
+                            <dd class="col-sm-8 text-muted">@calculatedBasePrice.ToString("C")</dd>
+
+                            <dt class="col-sm-4 text-success">Preço de Venda (Final)</dt>
+                            <dd class="col-sm-8 text-success fs-4 fw-bold">@product.Price.ToString("C")</dd>
+
+                            <div class="col-12"><hr /></div>
+
+                          
+                            <dt class="col-sm-4">Stock</dt>
+                            <dd class="col-sm-8">@product.Stock un.</dd> 
+                            
+
+                            <dt class="col-sm-4">Categoria</dt>
+                            <dd class="col-sm-8"><span class="badge bg-primary">@(product.Category?.Name ?? "-")</span></dd>
+
+                            <dt class="col-sm-4">Disponibilidade</dt>
+                            <dd class="col-sm-8"><span class="badge bg-info text-dark">@(product.AvailabilityMode?.Name ?? "-")</span></dd>
+
+                            <dt class="col-sm-4">Visibilidade</dt>
+                            <dd class="col-sm-8">
+                                @if (product.IsActive)
+                                {
+                                    <span class="text-success"><i class="bi bi-check-circle-fill"></i> Visível na Loja</span>
+                                }
+                                else
+                                {
+                                    <span class="text-danger"><i class="bi bi-x-circle-fill"></i> Oculto</span>
+                                }
+                            </dd>
+                        </dl>
+                    </div>
+                    <div class="card-footer bg-white">
+                        <a href="@($"/products/edit?id={product.Id}")" class="btn btn-warning">✏️ Editar</a>
+                        <a href="/products" class="btn btn-outline-secondary ms-2">Voltar à Lista</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private Product? product;
+    private decimal calculatedBasePrice;
+
+    [SupplyParameterFromQuery]
+    public int Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        product = await context.Products
+            .Include(p => p.Category)
+            .Include(p => p.AvailabilityMode)
+            .FirstOrDefaultAsync(m => m.Id == Id);
+
+        if (product is null)
+        {
+            Navigation.NavigateTo("notfound");
+            return; 
+        }
+
+
+        var settings = await context.CompanySettings.FirstOrDefaultAsync();
+        decimal margem = settings?.ProfitMargin ?? 0.50m;
+
+        calculatedBasePrice = product.Price / (1 + margem);
+    }
+}

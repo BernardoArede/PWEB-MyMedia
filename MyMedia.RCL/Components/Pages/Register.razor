@@ -1,0 +1,94 @@
+﻿@page "/register"
+@using MyMedia.RCL.Models
+@using MyMedia.RCL.Services
+@inject MyMediaService Service
+@inject NavigationManager Navigation
+
+<PageTitle>Registo</PageTitle>
+
+<div class="row justify-content-center mt-4">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow">
+            <div class="card-header bg-success text-white text-center">
+                <h3>Criar Conta</h3>
+            </div>
+            <div class="card-body">
+                <EditForm Model="registerModel" OnValidSubmit="HandleRegister">
+                    <DataAnnotationsValidator />
+
+                    <div class="mb-3">
+                        <label>Nome Completo</label>
+                        <InputText @bind-Value="registerModel.Name" class="form-control" />
+                        <ValidationMessage For="@(() => registerModel.Name)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Email</label>
+                        <InputText @bind-Value="registerModel.Email" class="form-control" />
+                        <ValidationMessage For="@(() => registerModel.Email)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label>NIF (Opcional)</label>
+                        <InputText @bind-Value="registerModel.NIF" class="form-control" />
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label>Password</label>
+                            <InputText @bind-Value="registerModel.Password" type="password" class="form-control" />
+                            <ValidationMessage For="@(() => registerModel.Password)" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label>Confirmar Password</label>
+                            <InputText @bind-Value="registerModel.ConfirmPassword" type="password" class="form-control" />
+                            <ValidationMessage For="@(() => registerModel.ConfirmPassword)" />
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger">@errorMessage</div>
+                    }
+
+                    @if (success)
+                    {
+                        <div class="alert alert-success">
+                            Conta criada com sucesso! A redirecionar para o login...
+                        </div>
+                    }
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success">Registar</button>
+                        <a href="login" class="btn btn-outline-secondary">Voltar ao Login</a>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private RegisterModel registerModel = new();
+    private string? errorMessage;
+    private bool success = false;
+
+    private async Task HandleRegister()
+    {
+        errorMessage = null;
+
+        var error = await Service.RegisterAsync(registerModel);
+
+        if (error == null)
+        {
+            success = true;
+            StateHasChanged();
+            await Task.Delay(2000); 
+            Navigation.NavigateTo("/login");
+        }
+        else
+        {
+            errorMessage = error;
+        }
+    }
+}

@@ -1,0 +1,123 @@
+﻿@page "/users"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using MyMedia.GestaoLoja.Data
+@attribute [Authorize(Roles = "Admin,Funcionario")]
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Gestão de Utilizadores</PageTitle>
+
+<h1>Gestão de Utilizadores</h1>
+
+<p>Aprove ou bloqueie o acesso de utilizadores à plataforma.</p>
+
+@if (users == null)
+{
+    <p><em>A carregar...</em></p>
+}
+else
+{
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Email / User</th>
+                <th>Nome</th>
+                <th>Perfil (Role)</th>
+                <th>Estado</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var user in users)
+            {
+                <tr>
+                    <td>
+                        @user.Email
+                        <br />
+                        <small class="text-muted">@user.Id</small>
+                    </td>
+                    <td>@user.Name</td>
+                    <td>
+                        @foreach (var role in userRoles[user.Id])
+                        {
+                            <span class="badge bg-info text-dark me-1">@role</span>
+                        }
+                    </td>
+                    <td>
+                        @if (user.IsActive)
+                        {
+                            <span class="badge bg-success">Ativo</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-warning text-dark">Pendente</span>
+                        }
+                    </td>
+                    <td>
+                        @* Regra: Não pode apagar/desativar o próprio utilizador *@
+                        @if (user.UserName != currentUser)
+                        {
+                            @if (user.IsActive)
+                            {
+                                <button class="btn btn-sm btn-danger" @onclick="() => ToggleStatus(user)">Bloquear</button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-sm btn-success" @onclick="() => ToggleStatus(user)">Aprovar</button>
+                            }
+                        }
+                        else
+                        {
+                            <span class="text-muted small">(Você)</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<ApplicationUser> users;
+    private Dictionary<string, IList<string>> userRoles = new();
+    private string currentUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Obter o utilizador atual para impedir auto-bloqueio
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        currentUser = authState.User.Identity?.Name ?? "";
+
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        // Carregar todos os utilizadores da BD
+        users = await UserManager.Users.ToListAsync();
+
+        // Carregar os Roles de cada um (para mostrar na tabela)
+        userRoles.Clear();
+        foreach (var user in users)
+        {
+            var roles = await UserManager.GetRolesAsync(user);
+            userRoles.Add(user.Id, roles);
+        }
+    }
+
+    private async Task ToggleStatus(ApplicationUser user)
+    {
+        // Inverte o estado (Se true vira false, se false vira true)
+        user.IsActive = !user.IsActive;
+
+        var result = await UserManager.UpdateAsync(user);
+
+        if (!result.Succeeded)
+        {
+            // Em produção, devias mostrar uma mensagem de erro aqui
+            Console.WriteLine("Erro ao atualizar utilizador");
+        }
+    }
+}

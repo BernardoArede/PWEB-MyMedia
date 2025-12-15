@@ -1,0 +1,67 @@
+﻿@page "/login"
+@using MyMedia.RCL.Models
+@using MyMedia.RCL.Services
+@inject MyMediaService Service
+@inject NavigationManager Navigation
+
+<PageTitle>Entrar</PageTitle>
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6 col-lg-4">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white text-center">
+                <h3>Login</h3>
+            </div>
+            <div class="card-body">
+                <EditForm Model="loginModel" OnValidSubmit="HandleLogin">
+                    <DataAnnotationsValidator />
+
+                    <div class="mb-3">
+                        <label>Email</label>
+                        <InputText @bind-Value="loginModel.Email" class="form-control" placeholder="admin@mymedia.com" />
+                        <ValidationMessage For="@(() => loginModel.Email)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Password</label>
+                        <InputText @bind-Value="loginModel.Password" type="password" class="form-control" />
+                        <ValidationMessage For="@(() => loginModel.Password)" />
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger">@errorMessage</div>
+                    }
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">Entrar</button>
+                    </div>
+                </EditForm>
+            </div>
+            <div class="card-footer text-center">
+                <small>Ainda não tem conta? <a href="register">Registar</a></small>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private LoginModel loginModel = new();
+    private string? errorMessage;
+
+    private async Task HandleLogin()
+    {
+        errorMessage = null; 
+
+        var error = await Service.LoginAsync(loginModel);
+
+        if (error == null)
+        {
+            Navigation.NavigateTo("/catalog");
+        }
+        else
+        {
+            errorMessage = error;
+        }
+    }
+
+}

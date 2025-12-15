@@ -1,0 +1,46 @@
+﻿@page "/availabilitymodes/details"
+@using Microsoft.EntityFrameworkCore
+@using MyMedia.GestaoLoja.Entities
+@inject IDbContextFactory<MyMedia.GestaoLoja.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Details</PageTitle>
+
+<h1>Details</h1>
+
+<div>
+    <h2>AvailabilityMode</h2>
+    <hr />
+    @if (availabilitymode is null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else {
+        <dl class="row">
+            <dt class="col-sm-2">Name</dt>
+            <dd class="col-sm-10">@availabilitymode.Name</dd>
+        </dl>
+        <div>
+            <a href="@($"/availabilitymodes/edit?id={availabilitymode.Id}")">Edit</a> |
+            <a href="@($"/availabilitymodes")">Back to List</a>
+        </div>
+    }
+</div>
+
+@code {
+    private AvailabilityMode? availabilitymode;
+
+    [SupplyParameterFromQuery]
+    private int Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        availabilitymode = await context.AvailabilityModes.FirstOrDefaultAsync(m => m.Id == Id);
+
+        if (availabilitymode is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+}

@@ -1,0 +1,17 @@
+﻿@using MyMedia.RCL.Components.Pages
+
+<Router AppAssembly="@typeof(Program).Assembly"
+        AdditionalAssemblies="new[] { typeof(global::MyMedia.RCL.Components.Pages.Home).Assembly }">
+
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(Layout.MainLayout)" />
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+
+    <NotFound>
+        <LayoutView Layout="@typeof(Layout.MainLayout)">
+            <p role="alert">Desculpe, não há nada neste endereço.</p>
+        </LayoutView>
+    </NotFound>
+
+</Router>

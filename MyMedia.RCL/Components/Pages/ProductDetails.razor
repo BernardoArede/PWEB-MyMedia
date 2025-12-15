@@ -1,0 +1,92 @@
+﻿@page "/catalog/{Id:int}"
+@using MyMedia.RCL.Models
+@using MyMedia.RCL.Services
+@inject MyMediaService Service
+@inject NavigationManager Navigation
+@inject CartService CartService
+
+<PageTitle>Detalhes do Produto</PageTitle>
+
+<div class="container mt-4">
+    <button class="btn btn-outline-secondary mb-3" @onclick="GoBack">
+        ⬅ Voltar
+    </button>
+
+    @if (product == null)
+    {
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p>A carregar detalhes...</p>
+        </div>
+    }
+    else
+    {
+        <div class="card shadow mb-5">
+            <div class="row g-0">
+                <div class="col-md-5">
+                    @if (product.Image != null && product.Image.Length > 0)
+                    {
+                        var base64 = Convert.ToBase64String(product.Image);
+                        var imgSrc = $"data:{product.ImageMimeType ?? "image/jpeg"};base64,{base64}";
+                        <img src="@imgSrc" class="img-fluid rounded-start w-100" style="object-fit: cover; max-height: 400px;" alt="@product.Name">
+                    }
+                    else
+                    {
+                        <div class="bg-light d-flex align-items-center justify-content-center h-100" style="min-height: 300px;">
+                            <span class="text-muted">Sem Imagem</span>
+                        </div>
+                    }
+                </div>
+
+                <div class="col-md-7">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <h2 class="card-title">@product.Name</h2>
+                            <span class="badge bg-primary fs-6">@product.Category?.Name</span>
+                        </div>
+
+                        <h4 class="text-success mt-3">@product.Price.ToString("C")</h4>
+
+                        <p class="card-text mt-4">@product.Description</p>
+
+                        <div class="mt-4">
+                            <p><strong>Disponibilidade:</strong> @product.AvailabilityMode?.Name</p>
+                        </div>
+
+                        <div class="d-grid gap-2 mt-5">
+                            <button class="btn btn-success btn-lg" @onclick="AddToCart">
+                                🛒 Adicionar ao Carrinho
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private Product? product;
+
+    protected override async Task OnInitializedAsync()
+    {
+        product = await Service.GetProductByIdAsync(Id);
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/catalog");
+    }
+
+    private void AddToCart()
+    {
+        if (product != null)
+        {
+            CartService.AddToCart(product);
+            Navigation.NavigateTo("/cart");
+        }
+    }
+}

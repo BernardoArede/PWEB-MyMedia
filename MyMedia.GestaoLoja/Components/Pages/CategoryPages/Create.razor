@@ -1,0 +1,74 @@
+﻿@page "/categories/create"
+@using Microsoft.EntityFrameworkCore
+@using MyMedia.GestaoLoja.Entities
+@using MyMedia.GestaoLoja.Data
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager Navigation
+
+<PageTitle>Criar Categoria</PageTitle>
+
+<h1>Criar Nova Categoria</h1>
+
+<h4>Categoria</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <EditForm method="post" Model="Category" OnValidSubmit="AddCategory" FormName="create" Enhance>
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" role="alert" />
+
+            @* Campo Nome *@
+            <div class="mb-3">
+                <label for="name" class="form-label">Nome da Categoria</label>
+                <InputText id="name" @bind-Value="Category.Name" class="form-control" />
+                <ValidationMessage For="() => Category.Name" class="text-danger" />
+            </div>
+
+            @* Campo Categoria Pai (Dropdown) *@
+            <div class="mb-3">
+                <label for="parentcategoryid" class="form-label">Categoria Pai (Opcional)</label>
+                <InputSelect id="parentcategoryid" @bind-Value="Category.ParentCategoryId" class="form-control">
+                    <option value="">-- Nenhuma (Categoria Principal) --</option>
+                    @foreach (var cat in ExistingCategories)
+                    {
+                        <option value="@cat.Id">@cat.Name</option>
+                    }
+                </InputSelect>
+                <ValidationMessage For="() => Category.ParentCategoryId" class="text-danger" />
+            </div>
+
+            <button type="submit" class="btn btn-primary">Criar</button>
+        </EditForm>
+    </div>
+</div>
+
+<div>
+    <a href="/categories">Voltar à Lista</a>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private Category Category { get; set; } = new();
+
+    // Lista auxiliar para guardar as categorias que vão aparecer na dropdown
+    private List<Category> ExistingCategories = new();
+
+    // Método executado ao abrir a página
+    protected override async Task OnInitializedAsync()
+    {
+        // Usa a Factory para criar um contexto temporário e buscar dados
+        using var context = DbFactory.CreateDbContext();
+
+        // Carrega todas as categorias existentes da BD para a lista
+        ExistingCategories = await context.Categories.ToListAsync();
+    }
+
+    // Método executado ao submeter o formulário
+    private async Task AddCategory()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Categories.Add(Category);
+        await context.SaveChangesAsync();
+        Navigation.NavigateTo("/categories");
+    }
+}

@@ -1,0 +1,65 @@
+﻿@page "/catalog"
+@using MyMedia.RCL.Models
+@using MyMedia.RCL.Services
+@inject MyMediaService Service
+
+<PageTitle>Catálogo</PageTitle>
+
+<h1>Catálogo de Produtos</h1>
+
+@if (products == null)
+{
+    <p><em>A carregar produtos...</em></p>
+}
+else if (products.Count == 0)
+{
+    <p>Não há produtos disponíveis ou erro de ligação.</p>
+}
+else
+{
+    <div class="row row-cols-1 row-cols-md-3 g-4">
+        @foreach (var product in products)
+        {
+            <div class="col">
+                <div class="card h-100 shadow-sm">
+                    @if (product.Image != null && product.Image.Length > 0)
+                    {
+                        var base64 = Convert.ToBase64String(product.Image);
+                        var imgSrc = $"data:{product.ImageMimeType ?? "image/jpeg"};base64,{base64}";
+                        <img src="@imgSrc" class="card-img-top" style="height: 200px; object-fit: cover;" alt="@product.Name" />
+                    }
+                    else
+                    {
+                        <div class="card-img-top bg-secondary text-white d-flex justify-content-center align-items-center" style="height: 200px;">
+                            Sem Imagem
+                        </div>
+                    }
+
+                    <div class="card-body">
+                        <h5 class="card-title">@product.Name</h5>
+                        <p class="card-text text-truncate">@product.Description</p>
+                        <p class="card-text">
+                            <strong>@product.Price.ToString("C")</strong>
+                        </p>
+                        <span class="badge bg-primary">@product.Category?.Name</span>
+                        <span class="badge bg-info text-dark">@product.AvailabilityMode?.Name</span>
+                    </div>
+                    <div class="card-footer bg-white border-top-0">
+                        <a href="@($"catalog/{product.Id}")" class="btn btn-outline-primary w-100">
+                            Ver Detalhes
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<Product>? products;
+
+    protected override async Task OnInitializedAsync()
+    {
+        products = await Service.GetProductsAsync();
+    }
+}

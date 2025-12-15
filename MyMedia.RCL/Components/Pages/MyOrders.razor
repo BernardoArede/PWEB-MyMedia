@@ -1,0 +1,77 @@
+﻿@page "/my-orders"
+@using MyMedia.RCL.Models
+@using MyMedia.RCL.Services
+@inject MyMediaService Service
+@inject NavigationManager Navigation
+
+<PageTitle>As Minhas Encomendas</PageTitle>
+
+<h1>Histórico de Compras</h1>
+
+@if (orders == null)
+{
+    <p>A carregar...</p>
+}
+else if (orders.Count == 0)
+{
+    <div class="alert alert-info">
+        Ainda não fez nenhuma encomenda. <a href="catalog">Ir para a Loja</a>.
+    </div>
+}
+else
+{
+    <div class="accordion mt-4" id="ordersAccordion">
+        @foreach (var order in orders)
+        {
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#order-@order.Id">
+                        <div class="d-flex w-100 justify-content-between me-3">
+                            <span><strong>Encomenda #@order.Id</strong> - @order.Date.ToShortDateString()</span>
+                            <span class="text-success">@order.Total.ToString("C")</span>
+                            <span class="badge bg-secondary">@order.Status</span>
+                        </div>
+                    </button>
+                </h2>
+                <div id="order-@order.Id" class="accordion-collapse collapse" data-bs-parent="#ordersAccordion">
+                    <div class="accordion-body">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Produto</th>
+                                    <th>Qtd</th>
+                                    <th>Preço Unit.</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in order.Items)
+                                {
+                                    <tr>
+                                        <td>@item.Product?.Name</td>
+                                        <td>@item.Quantity</td>
+                                        <td>@item.UnitPrice.ToString("C")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<OrderModel>? orders;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Service.IsLoggedIn)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        orders = await Service.GetMyOrdersAsync();
+    }
+}

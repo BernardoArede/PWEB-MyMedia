@@ -1,0 +1,80 @@
+﻿@page "/settings"
+@using Microsoft.EntityFrameworkCore
+@using MyMedia.GestaoLoja.Entities
+@using MyMedia.GestaoLoja.Data
+@inject ApplicationDbContext DB
+@inject NavigationManager NavigationManager
+
+<PageTitle>Configuração de Lucro</PageTitle>
+
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-warning text-dark">
+            <h3 class="mb-0">⚙️ Definição da Margem de Lucro</h3>
+        </div>
+        <div class="card-body">
+            @if (showSuccess)
+            {
+                <div class="alert alert-success">Configuração guardada com sucesso!</div>
+            }
+
+            <EditForm Model="Settings" OnValidSubmit="SaveSettings" FormName="SettingsForm">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="text-danger" />
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Margem de Lucro (Decimal)</label>
+                    <p class="text-muted small">Exemplo: 0,50 corresponde a 50% de lucro sobre o preço base.</p>
+
+                    <InputNumber @bind-Value="Settings.ProfitMargin" class="form-control" step="0.01" />
+                    <ValidationMessage For="() => Settings.ProfitMargin" class="text-danger" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Última Atualização</label>
+                    <input class="form-control" value="@Settings.LastUpdated" disabled />
+                </div>
+
+                <button type="submit" class="btn btn-primary">💾 Guardar Configuração</button>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    public MyMedia.GestaoLoja.Entities.CompanySettings Settings { get; set; } = new();
+
+    private bool showSuccess = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var existing = await DB.CompanySettings.FirstOrDefaultAsync();
+
+        if (existing != null)
+        {
+            Settings = existing;
+        }
+        else
+        {
+            Settings = new MyMedia.GestaoLoja.Entities.CompanySettings { ProfitMargin = 0.50m };
+        }
+    }
+
+    private async Task SaveSettings()
+    {
+        Settings.LastUpdated = DateTime.Now;
+
+        if (Settings.Id == 0)
+        {
+            DB.CompanySettings.Add(Settings);
+        }
+        else
+        {
+            DB.CompanySettings.Update(Settings);
+        }
+
+        await DB.SaveChangesAsync();
+        showSuccess = true;
+    }
+}
