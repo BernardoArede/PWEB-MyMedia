@@ -20,7 +20,7 @@ builder.Services.AddDbContext<AppDbContext>(option =>
 
 // 2. Configuração do Identity API (Novidade .NET 8)
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
-{
+{ 
     options.Password.RequireDigit = true;
     options.Password.RequiredLength = 6;
     options.User.RequireUniqueEmail = true;
