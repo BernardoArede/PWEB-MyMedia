@@ -7,7 +7,7 @@ namespace MyMedia.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class CategoriesController : ControllerBase
+    public class CategoriesController : ControllerBase 
     {
         private readonly AppDbContext _context;
 

@@ -66,7 +66,6 @@ namespace MyMedia.API.Controllers
                     return Unauthorized(new { message = "Conta inativa. Contacte o administrador." });
                 }
 
-                // Se passou tudo, gera o token
                 var token = GenerateJwtToken(user);
                 return Ok(new { token });
             }
@@ -78,20 +77,20 @@ namespace MyMedia.API.Controllers
         private string GenerateJwtToken(ApplicationUser user)
         {
             var jwtSettings = _configuration.GetSection("JWT");
-            var key = Encoding.ASCII.GetBytes(jwtSettings["Key"]!);
+            var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
 
             var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.NameIdentifier, user.Id),
-                new Claim(ClaimTypes.Name, user.UserName!),
-                new Claim(ClaimTypes.Email, user.Email!),
-                new Claim("Nome", user.Name)
-            };
+    {
+        new Claim(JwtRegisteredClaimNames.Sub, user.Id), // OBRIGATÓRIO SER ASSIM   
+        new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+        new Claim(ClaimTypes.Name, user.UserName ?? ""),
+        new Claim(ClaimTypes.Email, user.Email ?? "")
+    };
 
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddHours(2), // Token válido por 2 horas
+                Expires = DateTime.UtcNow.AddHours(2),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature),
                 Issuer = jwtSettings["Issuer"],
                 Audience = jwtSettings["Audience"]

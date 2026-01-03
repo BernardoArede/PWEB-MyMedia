@@ -18,6 +18,7 @@ namespace MyMedia.MAUI
             builder.Services.AddMauiBlazorWebView();
 
             string devTunnelUrl = "https://qbbm94g5-7092.usw3.devtunnels.ms/";
+   
 
             builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(devTunnelUrl) });
             builder.Services.AddScoped<MyMediaService>();

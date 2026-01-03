@@ -1,9 +1,9 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+ï»¿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
-using MyMedia.API.Data; // O Teu Namespace
+using MyMedia.API.Data;
 using MyMedia.API.Entities;
 using MyMedia.API.Repositories.Interfaces;
 using MyMedia.API.Repositories;
@@ -11,16 +11,16 @@ using Microsoft.AspNetCore.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Configuração da Base de Dados
+// --- 1. Base de Dados ---
 var connection = builder.Configuration.GetConnectionString("DefaultConnection") ??
     throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
 builder.Services.AddDbContext<AppDbContext>(option =>
        option.UseSqlServer(connection));
 
-// 2. Configuração do Identity API (Novidade .NET 8)
+// --- 2. Identity ---
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
-{ 
+{
     options.Password.RequireDigit = true;
     options.Password.RequiredLength = 6;
     options.User.RequireUniqueEmail = true;
@@ -28,53 +28,68 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
     .AddEntityFrameworkStores<AppDbContext>()
     .AddDefaultTokenProviders();
 
-// 3. Configuração de Atenticação JWT (Obrigatório pelo enunciado)
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
+// --- 3. JWT com DIAGNÃ“STICO DE ERRO ---
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
     {
-        options.TokenValidationParameters = new TokenValidationParameters
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidAudience = builder.Configuration["JWT:Audience"],
+        ValidIssuer = builder.Configuration["JWT:Issuer"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Key"]!))
+    };
+
+    // ðŸš¨ ESTA PARTE VAI DIZER-NOS O ERRO NA CONSOLA ðŸš¨
+    options.Events = new JwtBearerEvents
+    {
+        OnAuthenticationFailed = context =>
         {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidAudience = builder.Configuration["JWT:Audience"],
-            ValidIssuer = builder.Configuration["JWT:Issuer"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Key"]!))
-        };
-    });
+            Console.WriteLine("âŒ TOKEN REJEITADO: " + context.Exception.Message);
+            return Task.CompletedTask;
+        },
+        OnTokenValidated = context =>
+        {
+            Console.WriteLine("âœ… TOKEN ACEITE! User: " + context.Principal.Identity.Name);
+            return Task.CompletedTask;
+        }
+    };
+});
 
 builder.Services.AddAuthorization();
 
-// 4. Configuração do Swagger com suporte a JWT (Cadeado)
+// --- 4. CORS ---
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+    });
+});
+
+// --- 5. Swagger ---
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "MyMedia API", Version = "v1" });
-
-    // Define o esquema de segurança Bearer
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
+        Description = "Escrever: 'Bearer ' + o teu token",
         Name = "Authorization",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.ApiKey,
         Scheme = "Bearer"
     });
-
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
-        {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
-            new string[] { }
-        }
+        { new OpenApiSecurityScheme { Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" } }, new string[] { } }
     });
 });
 
@@ -84,13 +99,15 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
     });
 
-// --- REPOSITÓRIOS (Ainda vamos criar estes ficheiros, por isso estão comentados para não dar erro) ---
-// builder.Services.AddScoped<ICategoriaRepository, CategoriaRepository>();
+// --- REPOSITÃ“RIOS ---
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.AddScoped<IFavoriteRepository, FavoriteRepository>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+
+System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -98,10 +115,12 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseStaticFiles(); // Importante para as imagens
+app.UseStaticFiles();
 
-app.UseAuthentication(); // Quem és tu?
-app.UseAuthorization();  // O que podes fazer?
+
+app.UseCors("AllowAll"); 
+app.UseAuthentication();
+app.UseAuthorization();  
 
 app.MapControllers();
 

@@ -10,7 +10,7 @@ namespace MyMedia.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // Só utilizadores logados podem encomendar
+    [Authorize] // Só utilizadores com login feito podem encomendar 
     public class OrdersController : ControllerBase
     {
         private readonly AppDbContext _context;

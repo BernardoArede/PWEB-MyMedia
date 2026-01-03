@@ -6,5 +6,7 @@ namespace MyMedia.API.Repositories.Interfaces
     {
         Task<IEnumerable<Product>> GetAllProductsAsync();
         Task<Product?> GetProductByIdAsync(int id);
+
+        Task<Product?> GetRandomActiveProductAsync();
     }
 }

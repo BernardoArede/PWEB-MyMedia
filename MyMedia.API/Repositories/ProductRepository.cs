@@ -16,11 +16,10 @@ namespace MyMedia.API.Repositories
 
         public async Task<IEnumerable<Product>> GetAllProductsAsync()
         {
-            // Regra: Apenas produtos ativos e com as relações carregadas
             return await _context.Products
                 .Include(p => p.Category)
                 .Include(p => p.AvailabilityMode)
-                .Where(p => p.IsActive)
+                .Where(p => p.IsActive) 
                 .ToListAsync();
         }
 
@@ -30,6 +29,15 @@ namespace MyMedia.API.Repositories
                 .Include(p => p.Category)
                 .Include(p => p.AvailabilityMode)
                 .FirstOrDefaultAsync(p => p.Id == id && p.IsActive);
+        }
+
+        public async Task<Product?> GetRandomActiveProductAsync()
+        {
+            return await _context.Products
+                .Where(p => p.IsActive)
+                .Include(p => p.Category)
+                .OrderBy(p => Guid.NewGuid()) 
+                .FirstOrDefaultAsync();
         }
     }
 }

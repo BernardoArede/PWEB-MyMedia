@@ -1,4 +1,5 @@
 ﻿using MyMedia.GestaoLoja.Data;
+using MyMedia.GestaoLoja.Entities;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MyMedia.GestaoLoja.Entities

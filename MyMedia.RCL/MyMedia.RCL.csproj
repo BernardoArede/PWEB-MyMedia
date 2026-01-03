@@ -14,4 +14,8 @@
 	  <Folder Include="Areas\MyFeature\Pages\" />
 	</ItemGroup>
 
+	<ItemGroup>
+		<PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="8.0.0" />
+	</ItemGroup>
+
 </Project>

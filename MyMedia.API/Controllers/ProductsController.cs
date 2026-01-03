@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using MyMedia.API.Entities;
-using MyMedia.API.Repositories.Interfaces; 
+using MyMedia.API.Repositories.Interfaces;
 
 namespace MyMedia.API.Controllers
 {
@@ -8,7 +8,6 @@ namespace MyMedia.API.Controllers
     [ApiController]
     public class ProductsController : ControllerBase
     {
-        // Em vez do Contexto, injetamos o Repositório
         private readonly IProductRepository _productRepository;
 
         public ProductsController(IProductRepository productRepository)
@@ -19,17 +18,31 @@ namespace MyMedia.API.Controllers
         // GET: api/Products
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
-        { 
+        {
             var products = await _productRepository.GetAllProductsAsync();
-
             return Ok(products);
         }
 
-        // GET: api/Products/5
+        // GET: api/Products/
+        [HttpGet("highlight")]
+        public async Task<ActionResult<Product>> GetHighlightProduct()
+        {
+            var product = await _productRepository.GetRandomActiveProductAsync();
+
+            if (product == null)
+            {
+                return NoContent();
+            }
+
+            return Ok(product);
+        }
+
+        // GET: api/Products/{id}
         [HttpGet("{id}")]
         public async Task<ActionResult<Product>> GetProduct(int id)
         {
             var product = await _productRepository.GetProductByIdAsync(id);
+
             if (product == null)
             {
                 return NotFound();

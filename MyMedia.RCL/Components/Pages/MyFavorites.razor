@@ -1,0 +1,91 @@
+﻿@page "/favorites"
+@using MyMedia.RCL.Models
+@using MyMedia.RCL.Services
+@inject MyMediaService Service
+@inject NavigationManager Navigation
+
+<PageTitle>Meus Favoritos</PageTitle>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>❤️ Os Meus Favoritos</h2>
+        <a href="catalog" class="btn btn-outline-primary">⬅ Voltar à Loja</a>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center mt-5">
+            <div class="spinner-border text-danger" role="status"></div>
+        </div>
+    }
+    else if (favorites.Count == 0)
+    {
+        <div class="alert alert-info text-center shadow-sm">
+            <h4>Ainda não tem favoritos.</h4>
+            <p>Vá ao catálogo e clique no coração ❤️ para guardar o que mais gosta!</p>
+            <a href="catalog" class="btn btn-primary mt-3">Explorar Catálogo</a>
+        </div>
+    }
+    else
+    {
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
+            @foreach (var product in favorites)
+            {
+                <div class="col">
+                    <div class="card h-100 shadow-sm border-0">
+                        <div class="position-relative" style="height: 200px; overflow: hidden;">
+                            @if (product.Image != null && product.Image.Length > 0)
+                            {
+                                var b64 = Convert.ToBase64String(product.Image);
+                                <img src="data:@product.ImageMimeType;base64,@b64" class="w-100 h-100 object-fit-cover" />
+                            }
+                            else
+                            {
+                                <div class="w-100 h-100 bg-light d-flex align-items-center justify-content-center text-muted">Sem Imagem</div>
+                            }
+
+                            <button class="btn btn-danger btn-sm position-absolute top-0 end-0 m-2 rounded-circle shadow"
+                                    @onclick="() => RemoveFavorite(product)" title="Remover">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+
+                        <div class="card-body">
+                            <h5 class="card-title text-truncate">@product.Name</h5>
+                            <p class="card-text text-success fw-bold">@product.Price.ToString("C")</p>
+                            <a href="catalog/@product.Id" class="btn btn-outline-dark w-100 rounded-pill mt-2">Ver Detalhes</a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<Product> favorites = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Service.IsLoggedIn)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+        await LoadFavorites();
+    }
+
+    private async Task LoadFavorites()
+    {
+        favorites = await Service.GetFavoritesAsync();
+        isLoading = false;
+    }
+
+    private async Task RemoveFavorite(Product product)
+    {
+        await Service.ToggleFavoriteAsync(product.Id, true); 
+
+        favorites.Remove(product);
+    }
+}

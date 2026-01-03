@@ -1,22 +1,100 @@
 ﻿@page "/"
+@using MyMedia.RCL.Models
+@using MyMedia.RCL.Services
+@inject MyMediaService Service
 
 <PageTitle>MyMEDIA - Home</PageTitle>
 
-<div class="text-center mt-5">
-    <h1>Bem-vindo à MyMEDIA! </h1>
-    <p class="lead">A sua loja de entretenimento favorita.</p>
-    
-    <div class="alert alert-info">
-        Este componente está a correr a partir da <strong>RCL Partilhada</strong>!
-    </div>
-    <div class="mt-4">
-        <NavLink href="catalog" class="btn btn-primary btn-lg shadow">
-            🛍️ Ver Catálogo de Produtos
-        </NavLink>
+<div class="text-center mt-4 mb-5">
+    <h1 class="display-4 fw-bold text-primary">Bem-vindo à MyMEDIA! 🎵🎬</h1>
+    <p class="lead text-muted">A sua loja de entretenimento favorita.</p>
+</div>
 
-        <NavLink href="login" class="btn btn-primary btn-lg shadow">
-            🛍️ Login
-        </NavLink>
-        <a href="my-orders" class="btn btn-secondary">📦 Minhas Encomendas</a>
+<div class="container mb-5">
+    <div class="card shadow-lg border-0 overflow-hidden">
+        <div class="row g-0">
+            @if (highlightProduct != null)
+            {
+                <div class="col-md-6 bg-light position-relative" style="min-height: 300px;">
+                    @if (highlightProduct.Image != null && highlightProduct.Image.Length > 0)
+                    {
+                        var b64 = Convert.ToBase64String(highlightProduct.Image);
+                        <img src="data:@highlightProduct.ImageMimeType;base64,@b64"
+                             class="w-100 h-100 object-fit-cover position-absolute top-0 start-0"
+                             alt="@highlightProduct.Name" />
+                    }
+                    else
+                    {
+                        <div class="d-flex align-items-center justify-content-center h-100 text-muted">
+                            <i class="bi bi-music-note-beamed display-1"></i>
+                        </div>
+                    }
+
+                    <div class="position-absolute top-0 start-0 m-3">
+                        <span class="badge bg-warning text-dark fs-6 shadow">⭐ Destaque do Dia</span>
+                    </div>
+                </div>
+
+                <div class="col-md-6 p-4 d-flex flex-column justify-content-center">
+                    <h5 class="text-uppercase text-muted small fw-bold mb-2">
+                        @(highlightProduct.Category?.Name ?? "Sugestão")
+                    </h5>
+                    <h2 class="display-6 fw-bold mb-3">@highlightProduct.Name</h2>
+                    <p class="card-text fs-5 text-secondary mb-4">
+                        @highlightProduct.Description
+                    </p>
+                    <div class="d-flex align-items-center justify-content-between mt-auto">
+                        <span class="display-6 fw-bold text-primary">@highlightProduct.Price.ToString("C")</span>
+                        <a href="catalog/@highlightProduct.Id" class="btn btn-dark btn-lg rounded-pill px-4">
+                            Ver Detalhes <i class="bi bi-arrow-right ms-2"></i>
+                        </a>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="col-12 p-5 text-center bg-light">
+                    @if (isLoading)
+                    {
+                        <div class="spinner-border text-primary mb-3" role="status"></div>
+                        <p class="text-muted">A procurar a melhor sugestão para si...</p>
+                    }
+                    else
+                    {
+                        <div class="py-4">
+                            <h3>🛒 O nosso catálogo espera por si!</h3>
+                            <p class="text-muted">Explore milhares de produtos musicais e cinematográficos.</p>
+                            <a href="catalog" class="btn btn-primary btn-lg mt-3 rounded-pill">Ir para a Loja</a>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
     </div>
 </div>
+
+<div class="container text-center mb-5">
+    <div class="row justify-content-center g-3">
+        <div class="col-md-4">
+            <a href="catalog" class="btn btn-outline-primary w-100 py-3 shadow-sm h-100 d-flex align-items-center justify-content-center">
+                <span class="fs-5">📚 Ver Catálogo Completo</span>
+            </a>
+        </div>
+        <div class="col-md-4">
+            <a href="login" class="btn btn-outline-dark w-100 py-3 shadow-sm h-100 d-flex align-items-center justify-content-center">
+                <span class="fs-5">🔐 Área de Cliente</span>
+            </a>
+        </div>
+    </div>
+</div>
+
+@code {
+    private Product? highlightProduct;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        highlightProduct = await Service.GetHighlightProductAsync();
+        isLoading = false;
+    }
+}

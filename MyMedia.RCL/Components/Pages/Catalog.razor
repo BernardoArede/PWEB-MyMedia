@@ -2,64 +2,129 @@
 @using MyMedia.RCL.Models
 @using MyMedia.RCL.Services
 @inject MyMediaService Service
+@inject NavigationManager Navigation
 
 <PageTitle>Catálogo</PageTitle>
 
-<h1>Catálogo de Produtos</h1>
-
-@if (products == null)
-{
-    <p><em>A carregar produtos...</em></p>
-}
-else if (products.Count == 0)
-{
-    <p>Não há produtos disponíveis ou erro de ligação.</p>
-}
-else
-{
-    <div class="row row-cols-1 row-cols-md-3 g-4">
-        @foreach (var product in products)
+<div class="container-fluid mt-3 mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3>🎵 O Nosso Catálogo</h3>
+        @if (Service.IsLoggedIn)
         {
-            <div class="col">
-                <div class="card h-100 shadow-sm">
-                    @if (product.Image != null && product.Image.Length > 0)
-                    {
-                        var base64 = Convert.ToBase64String(product.Image);
-                        var imgSrc = $"data:{product.ImageMimeType ?? "image/jpeg"};base64,{base64}";
-                        <img src="@imgSrc" class="card-img-top" style="height: 200px; object-fit: cover;" alt="@product.Name" />
-                    }
-                    else
-                    {
-                        <div class="card-img-top bg-secondary text-white d-flex justify-content-center align-items-center" style="height: 200px;">
-                            Sem Imagem
-                        </div>
-                    }
-
-                    <div class="card-body">
-                        <h5 class="card-title">@product.Name</h5>
-                        <p class="card-text text-truncate">@product.Description</p>
-                        <p class="card-text">
-                            <strong>@product.Price.ToString("C")</strong>
-                        </p>
-                        <span class="badge bg-primary">@product.Category?.Name</span>
-                        <span class="badge bg-info text-dark">@product.AvailabilityMode?.Name</span>
-                    </div>
-                    <div class="card-footer bg-white border-top-0">
-                        <a href="@($"catalog/{product.Id}")" class="btn btn-outline-primary w-100">
-                            Ver Detalhes
-                        </a>
-                    </div>
-                </div>
-            </div>
+            <a href="favorites" class="btn btn-outline-danger rounded-pill">
+                ❤️ Meus Favoritos
+            </a>
         }
     </div>
-}
+
+    @if (products == null)
+    {
+        <div class="text-center mt-5"><div class="spinner-border text-primary"></div></div>
+    }
+    else
+    {
+        <div class="mb-4">
+            <h5 class="fw-bold text-secondary ps-2">Categorias</h5>
+            <div class="d-flex overflow-auto pb-3 ps-2" style="gap: 15px; scrollbar-width: thin;">
+                <button class="btn @(selectedCategory == null ? "btn-primary" : "btn-outline-primary") rounded-pill px-4"
+                        @onclick="() => FilterByCategory(null)">
+                    Todos
+                </button>
+                @foreach (var cat in categories)
+                {
+                    <button class="btn @(selectedCategory == cat.Id ? "btn-primary" : "btn-outline-primary") rounded-pill px-4"
+                            @onclick="() => FilterByCategory(cat.Id)">
+                        @cat.Name
+                    </button>
+                }
+            </div>
+        </div>
+
+        <div class="mt-2">
+            <h5 class="fw-bold text-secondary ps-2">Produtos</h5>
+            <div class="d-flex overflow-auto pb-4 ps-2" style="gap: 20px; scrollbar-width: thin;">
+                @foreach (var product in filteredProducts)
+                {
+                    <div class="card shadow-sm border-0" style="min-width: 260px; max-width: 260px;">
+
+                        <div class="position-relative bg-light rounded-top" style="height: 180px; overflow: hidden;">
+                            @if (product.Image != null)
+                            {
+                                var b64 = Convert.ToBase64String(product.Image);
+                                <img src="data:@product.ImageMimeType;base64,@b64" class="w-100 h-100 object-fit-cover" />
+                            }
+                            else
+                            {
+
+                                <div class="d-flex align-items-center justify-content-center h-100 text-muted">Sem Imagem</div>
+                            }
+
+                            <button class="btn position-absolute top-0 end-0 m-2 rounded-circle shadow-sm border-0"
+                                    style="background-color: rgba(255,255,255,0.8);"
+                                    @onclick="() => ToggleHeart(product.Id)">
+                                @if (favoriteIds.Contains(product.Id))
+                                {
+                                    <span class="text-danger fs-5">❤️</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted fs-5">🤍</span>
+                                }
+                            </button>
+                        </div>
+
+                        <div class="card-body">
+                            <h6 class="card-title text-truncate">@product.Name</h6>
+                            <p class="text-primary fw-bold">@product.Price.ToString("C")</p>
+                            <a href="catalog/@product.Id" class="btn btn-sm btn-outline-dark w-100 rounded-pill">Ver Detalhes</a>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
 
 @code {
     private List<Product>? products;
+    private List<Product> filteredProducts = new();
+    private List<Category> categories = new();
+    private HashSet<int> favoriteIds = new(); // Lista rápida de IDs favoritos
+    private int? selectedCategory = null;
 
     protected override async Task OnInitializedAsync()
     {
         products = await Service.GetProductsAsync();
+
+        categories = products.Select(p => p.Category).Where(c => c != null).GroupBy(c => c!.Id).Select(g => g.First()!).ToList();
+        filteredProducts = products;
+
+        if (Service.IsLoggedIn)
+        {
+            var favs = await Service.GetFavoritesAsync();
+            favoriteIds = favs.Select(p => p.Id).ToHashSet();
+        }
+    }
+
+    private void FilterByCategory(int? categoryId)
+    {
+        selectedCategory = categoryId;
+        filteredProducts = categoryId == null ? products! : products!.Where(p => p.CategoryId == categoryId).ToList();
+    }
+
+    private async Task ToggleHeart(int productId)
+    {
+        if (!Service.IsLoggedIn)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        bool isFav = favoriteIds.Contains(productId);
+
+    
+        if (isFav) favoriteIds.Remove(productId);
+        else favoriteIds.Add(productId);
+        await Service.ToggleFavoriteAsync(productId, isFav);
     }
 }
