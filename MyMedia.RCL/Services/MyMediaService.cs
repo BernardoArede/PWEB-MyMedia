@@ -5,11 +5,61 @@ namespace MyMedia.RCL.Services
 {
     public class MyMediaService
     {
-        private readonly HttpClient _httpClient; 
+        private readonly HttpClient _httpClient;
+        public event Action? OnChange;
+        public string UserRole { get; private set; } = "";
+        public bool IsSupplier => IsLoggedIn && (UserRole == "Fornecedor" || UserRole == "Admin");
+
+        public string? JwtToken { get; private set; }
+        public bool IsLoggedIn => !string.IsNullOrEmpty(JwtToken);
+        private void NotifyStateChanged() => OnChange?.Invoke();
 
         public MyMediaService(HttpClient httpClient)
         {
             _httpClient = httpClient;
+        }
+
+        public async Task<bool> AddProductAsync(Product product)
+        {
+            if (!IsLoggedIn) return false;
+
+            try
+            {
+                var response = await _httpClient.PostAsJsonAsync("api/Products", product);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var msg = await response.Content.ReadAsStringAsync();
+                    System.Diagnostics.Debug.WriteLine($"❌ ERRO AO CRIAR PRODUTO: {response.StatusCode} - {msg}");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"✅ Produto criado com sucesso!");
+                }
+
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ ERRO CRÍTICO: {ex.Message}");
+                return false;
+            }
+        }
+
+       
+        public async Task<List<Category>> GetCategoriesAsync()
+        {
+            try
+            {
+                var products = await GetProductsAsync();
+                return products
+                    .Select(p => p.Category)
+                    .Where(c => c != null)
+                    .GroupBy(c => c.Id)
+                    .Select(g => g.First())
+                    .ToList();
+            }
+            catch { return new List<Category>(); }
         }
 
         public async Task<List<Product>> GetProductsAsync()
@@ -40,9 +90,57 @@ namespace MyMedia.RCL.Services
             }
         }
 
-        public string? JwtToken { get; private set; }
+        private byte[] ParseBase64WithoutPadding(string base64)
+        {
+            switch (base64.Length % 4)
+            {
+                case 2: base64 += "=="; break;
+                case 3: base64 += "="; break;
+            }
+            return Convert.FromBase64String(base64);
+        }
 
-        public bool IsLoggedIn => !string.IsNullOrEmpty(JwtToken);
+        private string ParseRoleFromJwt(string token)
+        {
+            try
+            {
+                var payload = token.Split('.')[1];
+                var jsonBytes = ParseBase64WithoutPadding(payload);
+                var keyValuePairs = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(jsonBytes);
+
+             
+                object? roleObject = null;
+                if (keyValuePairs!.TryGetValue("role", out object? r)) roleObject = r;
+                else if (keyValuePairs.TryGetValue("http://schemas.microsoft.com/ws/2008/06/identity/claims/role", out object? r2)) roleObject = r2;
+
+                if (roleObject != null)
+                {
+                    string roleStr = roleObject.ToString()!;
+
+                    if (roleStr.Trim().StartsWith("["))
+                    {
+                        var roles = System.Text.Json.JsonSerializer.Deserialize<string[]>(roleStr);
+                        if (roles != null)
+                        {
+                            if (roles.Contains("Admin")) return "Admin";
+                            if (roles.Contains("Fornecedor")) return "Fornecedor";
+                            return "Cliente";
+                        }
+                    }
+                    else
+                    {
+
+                        if (roleStr == "Admin") return "Admin";
+                        if (roleStr == "Fornecedor") return "Fornecedor";
+                    }
+                }
+                return "Cliente";
+            }
+            catch
+            {
+                return "Cliente";
+            }
+        }
 
         public async Task<string?> LoginAsync(LoginModel model)
         {
@@ -52,6 +150,7 @@ namespace MyMedia.RCL.Services
 
                 if (response.IsSuccessStatusCode)
                 {
+                    
                     var result = await response.Content.ReadFromJsonAsync<LoginResponse>();
                     JwtToken = result?.Token;
 
@@ -59,8 +158,9 @@ namespace MyMedia.RCL.Services
                     {
                         _httpClient.DefaultRequestHeaders.Authorization =
                             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", JwtToken);
+                            UserRole = ParseRoleFromJwt(JwtToken);
                     }
-
+                    NotifyStateChanged();
                     return null; 
                 }
                 else
@@ -73,6 +173,8 @@ namespace MyMedia.RCL.Services
                 return $"Erro de ligação: {ex.Message}";
             }
         }
+
+
 
         public async Task<string?> RegisterAsync(RegisterModel model)
         {
@@ -99,6 +201,7 @@ namespace MyMedia.RCL.Services
         {
             JwtToken = null;
             _httpClient.DefaultRequestHeaders.Authorization = null;
+            NotifyStateChanged();
         }
 
         public async Task<bool> CheckoutAsync(List<CartItem> cartItems)

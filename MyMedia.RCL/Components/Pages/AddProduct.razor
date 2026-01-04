@@ -1,0 +1,144 @@
+﻿@page "/add-product"
+@using MyMedia.RCL.Models
+@using MyMedia.RCL.Services
+@inject MyMediaService Service
+@inject NavigationManager Navigation
+
+<div class="container mt-4 mb-5">
+    <div class="card shadow border-0">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">📦 Novo Produto (Área de Fornecedor)</h4>
+        </div>
+        <div class="card-body">
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger">@errorMessage</div>
+            }
+
+            <EditForm Model="@product" OnValidSubmit="HandleSubmit">
+                <DataAnnotationsValidator />
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Nome do Produto</label>
+                    <InputText class="form-control" @bind-Value="product.Name" placeholder="Ex: Guitarra Fender" />
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Preço de Custo (Base) €</label>
+                        <InputNumber class="form-control" @bind-Value="product.BasePrice" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Stock Disponível</label>
+                        <InputNumber class="form-control" @bind-Value="product.Stock"/>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Categoria</label>
+                    <InputSelect class="form-select" @bind-Value="product.CategoryId">
+                        <option value="0">Selecione uma categoria...</option>
+                        @foreach (var cat in categories)
+                        {
+                            <option value="@cat.Id">@cat.Name</option>
+                        }
+                    </InputSelect>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Descrição Detalhada</label>
+                    <InputTextArea class="form-control" @bind-Value="product.Description" rows="3" />
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label fw-bold">Imagem</label>
+                    <InputFile OnChange="HandleFileSelected" class="form-control" accept=".jpg,.png,.jpeg" />
+
+                    @if (previewImage != null)
+                    {
+                        <div class="mt-3 text-center p-2 bg-light rounded">
+                            <img src="@previewImage" style="max-height: 200px; border-radius: 8px;" />
+                        </div>
+                    }
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-success btn-lg" disabled="@isBusy">
+                        @if (isBusy)
+                        {
+                            <span class="spinner-border spinner-border-sm"></span>
+                        }
+                        else
+                        {
+
+                            <span>💾 Publicar Produto</span>
+                        }
+                    </button>
+                    <a href="catalog" class="btn btn-outline-secondary">Cancelar</a>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    private Product product = new() { IsActive = true };
+    private List<Category> categories = new();
+    private string? previewImage;
+    private string errorMessage = "";
+    private bool isBusy = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Service.IsLoggedIn) Navigation.NavigateTo("/login");
+        categories = await Service.GetCategoriesAsync();
+    }
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file != null)
+        {
+            long maxFileSize = 1024 * 1024 * 5; // 5MB
+            using var stream = file.OpenReadStream(maxFileSize);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+
+            product.Image = ms.ToArray();
+            product.ImageMimeType = file.ContentType;
+
+            var b64 = Convert.ToBase64String(product.Image);
+            previewImage = $"data:{product.ImageMimeType};base64,{b64}";
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        isBusy = true;
+        errorMessage = "";
+
+        if (product.CategoryId == 0)
+        {
+            errorMessage = "Selecione uma categoria válida.";
+            isBusy = false;
+            return;
+        }
+
+        // NÃO DEFINIMOS SupplierId AQUI! A API FAZ ISSO PELO TOKEN (SEGURANÇA)
+        // Definimos apenas o modo de disponibilidade por defeito (1 = Imediato, por exemplo)
+        product.AvailabilityModeId = 1;
+
+        var success = await Service.AddProductAsync(product);
+
+        if (success)
+        {
+            Navigation.NavigateTo("/catalog");
+        }
+        else
+        {
+            errorMessage = "Erro ao guardar. Verifique se preencheu tudo corretamente.";
+        }
+        isBusy = false;
+    }
+}

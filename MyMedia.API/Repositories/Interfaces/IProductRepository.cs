@@ -8,5 +8,7 @@ namespace MyMedia.API.Repositories.Interfaces
         Task<Product?> GetProductByIdAsync(int id);
 
         Task<Product?> GetRandomActiveProductAsync();
+
+        Task<Product> AddProductAsync(Product product);
     }
 }

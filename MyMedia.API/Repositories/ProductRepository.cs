@@ -19,7 +19,7 @@ namespace MyMedia.API.Repositories
             return await _context.Products
                 .Include(p => p.Category)
                 .Include(p => p.AvailabilityMode)
-                .Where(p => p.IsActive) 
+                .Where(p => p.IsActive)
                 .ToListAsync();
         }
 
@@ -36,8 +36,16 @@ namespace MyMedia.API.Repositories
             return await _context.Products
                 .Where(p => p.IsActive)
                 .Include(p => p.Category)
-                .OrderBy(p => Guid.NewGuid()) 
+                .OrderBy(p => Guid.NewGuid())
                 .FirstOrDefaultAsync();
+        }
+
+
+        public async Task<Product> AddProductAsync(Product product)
+        {
+            _context.Products.Add(product);
+            await _context.SaveChangesAsync();
+            return product;
         }
     }
 }

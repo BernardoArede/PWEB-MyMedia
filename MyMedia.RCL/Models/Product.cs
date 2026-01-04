@@ -10,6 +10,9 @@
         public string? ImageMimeType { get; set; }
         public bool IsActive { get; set; }
 
+        public int Stock { get; set; }
+        public decimal BasePrice { get; set; }
+
         public int CategoryId { get; set; }
         public Category? Category { get; set; }
 

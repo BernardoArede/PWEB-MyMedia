@@ -35,14 +35,14 @@ namespace MyMedia.API.Controllers
                 Email = model.Email,
                 Name = model.Name,
                 NIF = model.NIF,
-                IsActive = true // Ou false se quiseres aprovação manual
+                IsActive = true
             };
 
             var result = await _userManager.CreateAsync(user, model.Password);
 
             if (result.Succeeded)
             {
-                // Atribuir role "Cliente" por defeito
+
                 await _userManager.AddToRoleAsync(user, "Cliente");
                 return Ok(new { message = "Utilizador registado com sucesso!" });
             }
@@ -66,7 +66,7 @@ namespace MyMedia.API.Controllers
                     return Unauthorized(new { message = "Conta inativa. Contacte o administrador." });
                 }
 
-                var token = GenerateJwtToken(user);
+                var token = await GenerateJwtToken(user);
                 return Ok(new { token });
             }
 
@@ -74,18 +74,27 @@ namespace MyMedia.API.Controllers
         }
 
         // Método privado para gerar o Token JWT manualmente
-        private string GenerateJwtToken(ApplicationUser user)
+        private async Task<string> GenerateJwtToken(ApplicationUser user)
         {
             var jwtSettings = _configuration.GetSection("JWT");
             var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
 
+            // 1. Obter as Roles do Utilizador
+            var roles = await _userManager.GetRolesAsync(user);
+
             var claims = new List<Claim>
-    {
-        new Claim(JwtRegisteredClaimNames.Sub, user.Id), // OBRIGATÓRIO SER ASSIM   
-        new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-        new Claim(ClaimTypes.Name, user.UserName ?? ""),
-        new Claim(ClaimTypes.Email, user.Email ?? "")
-    };
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, user.Id),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim(ClaimTypes.Name, user.UserName ?? ""),
+                new Claim(ClaimTypes.Email, user.Email ?? "")
+            };
+
+            // 2. Adicionar as Roles como Claims
+            foreach (var role in roles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
 
             var tokenDescriptor = new SecurityTokenDescriptor
             {

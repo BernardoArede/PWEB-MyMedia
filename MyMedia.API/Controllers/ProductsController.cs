@@ -1,6 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using MyMedia.API.Data;
 using MyMedia.API.Entities;
 using MyMedia.API.Repositories.Interfaces;
+using System.Security.Claims;
 
 namespace MyMedia.API.Controllers
 {
@@ -9,11 +13,55 @@ namespace MyMedia.API.Controllers
     public class ProductsController : ControllerBase
     {
         private readonly IProductRepository _productRepository;
+        private readonly AppDbContext _context;
 
-        public ProductsController(IProductRepository productRepository)
+        public ProductsController(IProductRepository productRepository, AppDbContext context)
         {
             _productRepository = productRepository;
+            _context = context;
         }
+
+
+        // POST: api/Products
+        [HttpPost]
+        [Authorize]
+        public async Task<ActionResult<Product>> PostProduct([FromBody] Product product)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (userId == null) return Unauthorized("Utilizador não identificado.");
+
+            product.SupplierId = userId;
+            product.IsActive = true;
+            if (product.AvailabilityModeId == 0) product.AvailabilityModeId = 1;
+
+            var settings = await _context.CompanySettings.FirstOrDefaultAsync();
+
+           
+            decimal margin = settings != null ? settings.ProfitMargin : 0.50m;
+
+            if (product.BasePrice > 0)
+            {
+                product.Price = product.BasePrice + (product.BasePrice * margin);
+            }
+            else if (product.Price > 0)
+            {
+           
+                product.BasePrice = product.Price;
+            }
+          
+            try
+            {
+                var newProduct = await _productRepository.AddProductAsync(product);
+                return CreatedAtAction("GetProduct", new { id = newProduct.Id }, newProduct);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erro ao criar produto: {ex.Message}");
+                return BadRequest($"Erro ao gravar produto. Detalhes: {ex.Message}");
+            }
+        }
+
 
         // GET: api/Products
         [HttpGet]
